@@ -11,16 +11,19 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-public class MitaTowns extends JavaPlugin {
+
+public class MitaTowns extends JavaPlugin implements Listener {
 	
 	private ConsoleCommandSender console;
 	private Logger logger = Bukkit.getServer().getLogger();
-	private String databaseName = "MitaBaseDB.db";
-	private SQLite sqlite = new SQLite(this.logger, "[MitaBase]", this.databaseName, "plugins/MitaTowns/");
-	private SQLite mbsqlite = new SQLite(this.logger, "[MitaBase]", this.databaseName, "plugins/MitaBase/");
+	private String databaseName = "MitaTownsDB.db";
+	private SQLite sqlite = new SQLite(this.logger, "[MitaTowns]", databaseName, "plugins/MitaTowns/");
  
 	public void onEnable() {
 		this.console = Bukkit.getServer().getConsoleSender();
@@ -29,8 +32,10 @@ public class MitaTowns extends JavaPlugin {
 		if (worldEdit == null) {
 			this.console.sendMessage(ChatColor.RED + "Error! WorldEdit not found!");
 		}
+		getServer().getPluginManager().registerEvents(this, this);
 		this.sqlite.open();
 		setupDatabase();
+		saveConfig();
 		saveDefaultConfig();
 	}
 	public void onDisable() {
@@ -45,6 +50,10 @@ public class MitaTowns extends JavaPlugin {
 			String query = "CREATE TABLE PlayerTowns (ptid INTEGER PRIMARY KEY, userid INTEGER, townid INTEGER)";
 			this.sqlite.modifyQuery(query);
 		}
+		if (!this.sqlite.tableExists("users")) {
+			String query = "CREATE TABLE users (userid INTEGER PRIMARY KEY, username TEXT)";
+			this.sqlite.modifyQuery(query);
+		}
 	}
 	private void playerOnly(CommandSender sender) { sender.sendMessage(ChatColor.RED + "Only players can use this command"); }
 	private void noPermission(CommandSender sender, Command cmd, String[] args) {
@@ -55,6 +64,18 @@ public class MitaTowns extends JavaPlugin {
 		}
 		this.console.sendMessage(sender.getName() + " was denied access to command /" + cmd.getLabel() + " " + argString);
 		Bukkit.getServer().broadcast(sender.getName() + " was denied access to command /" + cmd.getLabel() + " " + argString, "MitaTowns.watchPerms");
+	}
+	@EventHandler
+	public void playerJoin(PlayerJoinEvent evt) {
+		Player p = evt.getPlayer();
+		ResultSet rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		try {
+			if(rs != null && !rs.next()) { //User doesn't exist in DB, so they joined the first time, We'll add them
+				sqlite.modifyQuery("INSERT INTO users (username) VALUES ('" + p.getName() + "')");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	private boolean newTown(CommandSender sender, Command cmd, String label, String[] args) {
 		Player p = null;
@@ -67,14 +88,14 @@ public class MitaTowns extends JavaPlugin {
 		if (!p.hasPermission("MitaTowns.town.new")) {
 			noPermission(sender, cmd, args);
 		}
-		int id = -1;
-		ResultSet rs = mbsqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		int id = 1;
+		ResultSet rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
 		try {
 			id = rs.getInt("userid");
 		} catch (Exception e) {
 			id = -1;
 		}
-		rs = this.sqlite.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
+		 rs = this.sqlite.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
 		try {
 			while (rs.next()) {
 				if (rs.getInt("mayor") == id) {
