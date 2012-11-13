@@ -2,7 +2,6 @@ package me.com.hutattedonmyarm.Mita.MitaTowns;
 import java.sql.ResultSet;
 import java.util.logging.Logger;
 import lib.net.darqy.SQLib.SQLite;
-import me.com.hutattedonmyarm.Mita.MitaBase.MitaBase;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -21,6 +20,7 @@ public class MitaTowns extends JavaPlugin {
 	private Logger logger = Bukkit.getServer().getLogger();
 	private String databaseName = "MitaBaseDB.db";
 	private SQLite sqlite = new SQLite(this.logger, "[MitaBase]", this.databaseName, "plugins/MitaTowns/");
+	private SQLite mbsqlite = new SQLite(this.logger, "[MitaBase]", this.databaseName, "plugins/MitaBase/");
  
 	public void onEnable() {
 		this.console = Bukkit.getServer().getConsoleSender();
@@ -67,8 +67,14 @@ public class MitaTowns extends JavaPlugin {
 		if (!p.hasPermission("MitaTowns.town.new")) {
 			noPermission(sender, cmd, args);
 		}
-		int id = MitaBase.getPlayerID(p.getName());
-		ResultSet rs = this.sqlite.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
+		int id = -1;
+		ResultSet rs = mbsqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		try {
+			id = rs.getInt("userid");
+		} catch (Exception e) {
+			id = -1;
+		}
+		rs = this.sqlite.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
 		try {
 			while (rs.next()) {
 				if (rs.getInt("mayor") == id) {
