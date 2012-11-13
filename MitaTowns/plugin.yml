@@ -1,0 +1,22 @@
+name: MitaBase
+main: me.com.hutattedonmyarm.Mita.MitaTowns.MitaTowns
+version: 1.0
+author: hutattedonmyarm
+commands:
+  town:
+    description: Displays information about your town / General Town commands
+    usage: /town [new|help|?]
+
+permissions:
+    MitaTowns.*:
+        description: Gives access to all commands from MitaTowns
+        children:
+            MitaTowns.admin.*: true
+    MitaTowns.admin.*:
+        description: MitaTowns admin commands
+        children:
+            MitaTowns.town.new: true
+    MitaTowns.mod.*:
+        description: MitaTowns mod commands
+        children:
+            MitaTowns.watchPerms: true

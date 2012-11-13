@@ -1,0 +1,4 @@
+#Size a newly founded town has. Please use only whole, even numbers
+new_town_size:
+  x-Dir: 100
+  z-Dir: 100
