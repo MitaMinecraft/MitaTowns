@@ -5,7 +5,8 @@ author: hutattedonmyarm
 commands:
   town:
     description: Displays information about your town / General Town commands
-    usage: /town [new|help|?]
+    usage: /town [new|help|?|<townname>]
+    aliases: t
 
 permissions:
     MitaTowns.*:

@@ -173,17 +173,53 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		try {
 			this.sqlite.modifyQuery("INSERT INTO PlayerTowns (townid, userid) VALUES ('" + rs.getInt("townid") + "', '" + id + "')");
 		} catch (Exception e) { e.printStackTrace(); }
+		sender.sendMessage(ChatColor.GREEN + "You're now founder and mayor of " + args[1]);
 		return true;
+	}
+	private void dispTown(CommandSender sender, String townname) {
+		String mayor, founder, inhabitans = null;
+		ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns WHERE userid = mayor AND townname = '" + townname +"'");
+		try {
+			mayor = rs.getString("username");
+			rs = sqlite.readQuery("SELECT username FROM users, towns WHERE userid = founder AND townname = '" + townname +"'");
+			founder = rs.getString("username");
+			rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND PlayerTowns.townid = towns.townid AND townname = '" + townname +"'");
+			while (rs.next()) {
+				inhabitans += rs.getString("username") + ", ";
+			}
+			inhabitans = inhabitans.substring(0, inhabitans.length()-2);
+			sender.sendMessage(ChatColor.UNDERLINE + "" + ChatColor.BLUE + "Town: " + townname);
+			sender.sendMessage(ChatColor.DARK_RED + "Founder: " + founder);
+			sender.sendMessage(ChatColor.YELLOW + "Mayor: " + mayor);
+			sender.sendMessage(ChatColor.BLUE + "Inhabitans: " + inhabitans);
+		} catch (Exception e) {
+			
+		}
 	}
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		if (cmd.getName().equalsIgnoreCase("town")) {
 			if(args.length == 0) {
-				
+				Player p = null;
+				ResultSet rs = null;
+				if ((sender instanceof Player)) {
+					p = (Player)sender;
+					rs = sqlite.readQuery("SELECT townname FROM towns AS t, users AS u, PlayerTowns as pt WHERE t.townid = pt.townid AND u.userid = pt.userid AND u.username = ' " + p.getName() + "'");
+				} else {
+					playerOnly(sender);
+					return false;
+				}
+				//ResultSet rs = sqlite.readQuery("SELECT townname FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT))");
+				//rs = sqlite.readQuery("SELECT townname FROM towns AS t, users AS u, PlayerTowns as pt WHERE t.townid = pt.townid AND u.userid = pt.userid AND u.username = ' " +p"'");
+				try {
+					dispTown(sender, rs.getString("townname"));
+				} catch (Exception e) {
+					
+				}
 			} else {
-				if(args[0].equalsIgnoreCase("town")) {
+				if(args[0].equalsIgnoreCase("new")) {
 					return newTown(sender, cmd, label, args);
 				} else {
-					
+					return true;
 				}
 			}
 		}
