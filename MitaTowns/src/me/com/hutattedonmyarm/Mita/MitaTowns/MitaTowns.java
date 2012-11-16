@@ -62,7 +62,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			this.sqlite.modifyQuery(query);
 		}
 		if (!this.sqlite.tableExists("users")) {
-			String query = "CREATE TABLE users (userid INTEGER PRIMARY KEY, username TEXT)";
+			String query = "CREATE TABLE users (userid INTEGER PRIMARY KEY, username TEXT, assistant INTEGER)";
 			this.sqlite.modifyQuery(query);
 		}
 	}
@@ -101,13 +101,20 @@ public class MitaTowns extends JavaPlugin implements Listener {
     	if(s == null) return null;
     	return s.replaceAll("&([0-9a-f])", "\u00A7$1");
     }
-	@EventHandler
+	private boolean isMayorOrAdmin(Player p, String permission) {
+		ResultSet rs = sqlite.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) AND username = ''" + p.getName() + "'");
+		try {
+			rs.getInt("userid");
+		}catch (Exception e) { return p.hasPermission("MitaTowns.manageAssistans");	}
+		return true;
+	}
+	@EventHandler	
 	public void playerJoin(PlayerJoinEvent evt) {
 		Player p = evt.getPlayer();
 		ResultSet rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
 		try {
 			if(rs != null && !rs.next()) { //User doesn't exist in DB, so they joined the first time, We'll add them
-				sqlite.modifyQuery("INSERT INTO users (username) VALUES ('" + p.getName() + "')");
+				sqlite.modifyQuery("INSERT INTO users (username, assistant) VALUES ('" + p.getName() + "', 0)");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -130,8 +137,14 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			noMoney(p, getConfig().getDouble("new_town.cost"), economy.getBalance(p.getName()));
 			return true;
 		}
-		int id = 1;
-		ResultSet rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		ResultSet rs = sqlite.readQuery("SELECT townid FROM towns WHERE townname = '" + args[1] + "'");
+		try {
+			rs.getInt("townid");
+			p.sendMessage(ChatColor.RED + "A town with this name already exists");
+			return true;
+		} catch (Exception e) {	}
+		int id = -1;
+		rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
 		try {
 			id = rs.getInt("userid");
 		} catch (Exception e) {
@@ -146,7 +159,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				}
 			}
 		}
-		catch (Exception localException1) { }
+		catch (Exception e) { }
 		Location l = p.getLocation();
 		int size_X = getConfig().getInt("new_town.size.x-Dir");
 		int size_Z = getConfig().getInt("new_town.size.z-Dir");
@@ -196,8 +209,67 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			
 		}
 	}
+	private boolean manageAssistants(CommandSender sender, Command cmd, String label, String[] args) {
+		Player p = null;
+		if ((sender instanceof Player)) {
+			p = (Player)sender;
+		}
+		if(args.length == 1) {
+			return false;
+		} else if(args.length == 2) {
+			if(p == null) {
+				playerOnly(sender);
+				return true;
+			}
+			if (args[1].equalsIgnoreCase("show")) {
+				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = (SELECT townname FROM towns, PlayerTowns WHERE towns.townid = PlayerTowns.townid AND Playertowns.userid = (SELECT userid FROM users WHERE username = '" + sender.getName() + "'))");
+				try {
+					String a = "";
+					while (rs.next()) {
+						a += rs.getString("username") + ", ";
+					}
+					a = a.substring(0, a.length()-2);
+					p.sendMessage(ChatColor.BLUE + "Assistants: " + a);
+				} catch (Exception e) {
+					p.sendMessage("This town doesn't have any assistans");
+				}
+			} else if (args[1].equalsIgnoreCase("add")) {
+				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				Player pl = getServer().getPlayer(args[1]);
+				ResultSet rs = sqlite.readQuery("SELECT userid FROM");
+			} else if(args[1].equalsIgnoreCase("remove")) {
+				
+			} else {
+				return false;
+			}	
+		} else if (args.length == 3) {
+			if (args[1].equalsIgnoreCase("show")) {
+				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = '" + args[2] + "'");
+				try {
+					String a = "";
+					while (rs.next()) {
+						a += rs.getString("username") + ", ";
+					}
+					a = a.substring(0, a.length()-2);
+					p.sendMessage(ChatColor.BLUE + "Assistants: " + a);
+				} catch (Exception e) {
+					sender.sendMessage("This town doesn't have any assistans");
+				}
+			} else if(args[1].equalsIgnoreCase("add")) {
+				
+			} else if (args[1].equalsIgnoreCase("remove")) {
+				
+			}
+		}
+		return true;
+	}
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		if (cmd.getName().equalsIgnoreCase("town")) {
+			/*
+			 * /t new <townname>
+			 * /t assistant add <name> 
+			 */
 			if(args.length == 0) {
 				Player p = null;
 				ResultSet rs = null;
@@ -208,9 +280,8 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					playerOnly(sender);
 					return false;
 				}
-				//ResultSet rs = sqlite.readQuery("SELECT townname FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT))");
-				//rs = sqlite.readQuery("SELECT townname FROM towns AS t, users AS u, PlayerTowns as pt WHERE t.townid = pt.townid AND u.userid = pt.userid AND u.username = ' " +p"'");
 				try {
+					//TODO check if mayor, display towncommands
 					dispTown(sender, rs.getString("townname"));
 				} catch (Exception e) {
 					
@@ -218,6 +289,8 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			} else {
 				if(args[0].equalsIgnoreCase("new")) {
 					return newTown(sender, cmd, label, args);
+				} else if(args[0].equalsIgnoreCase("assistant")) {
+					return manageAssistants(sender, cmd, label, args);
 				} else {
 					return true;
 				}
