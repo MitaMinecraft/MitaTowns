@@ -7,6 +7,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -236,8 +237,19 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				}
 			} else if (args[1].equalsIgnoreCase("add")) {
 				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
-				Player pl = getServer().getPlayer(args[1]);
-				ResultSet rs = sqlite.readQuery("SELECT userid FROM");
+				OfflinePlayer pl = getServer().getOfflinePlayer(args[1]);
+				if(pl == null) {
+					p.sendMessage(ChatColor.RED + "Player " + args[1] + " not found");
+					return true;
+				}
+				ResultSet rs = sqlite.readQuery("SELECT userid FROM users, PlayerTowns WHERE username = '" + pl.getName() + "' AND users.userid = PlayerTowns.userid AND PlayerTowns.townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "'))");
+				try {
+					rs.getInt("userid");
+				} catch (Exception e) {
+					p.sendMessage(ChatColor.RED + "Player " + pl.getName() + " is not in your town");
+					return true;
+				}
+				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
 			} else if(args[1].equalsIgnoreCase("remove")) {
 				
 			} else {
