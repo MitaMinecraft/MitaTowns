@@ -211,18 +211,16 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		}
 	}
 	private boolean manageAssistants(CommandSender sender, Command cmd, String label, String[] args) {
+		if(args.length == 1) {
+			return false;
+		}
 		Player p = null;
 		if ((sender instanceof Player)) {
 			p = (Player)sender;
 		}
-		if(args.length == 1) {
-			return false;
-		} else if(args.length == 2) {
-			if(p == null) {
-				playerOnly(sender);
-				return true;
-			}
-			if (args[1].equalsIgnoreCase("show")) {
+		if (args.length == 2) {
+			if(args[1].equalsIgnoreCase("show")) { //t assistant show; Admin/Mayor only!
+				if(p == null) { playerOnly(sender); }
 				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
 				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = (SELECT townname FROM towns, PlayerTowns WHERE towns.townid = PlayerTowns.townid AND Playertowns.userid = (SELECT userid FROM users WHERE username = '" + sender.getName() + "'))");
 				try {
@@ -235,11 +233,16 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				} catch (Exception e) {
 					p.sendMessage("This town doesn't have any assistans");
 				}
-			} else if (args[1].equalsIgnoreCase("add")) {
+			} else {
+				return false;
+			}
+		} else if(args.length == 3){
+			if(args[1].equalsIgnoreCase("add")) { //t assistant add <name>; Admin/Mayor only!
+				if(p == null) { playerOnly(sender); }
 				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
-				OfflinePlayer pl = getServer().getOfflinePlayer(args[1]);
+				OfflinePlayer pl = getServer().getOfflinePlayer(args[2]);
 				if(pl == null) {
-					p.sendMessage(ChatColor.RED + "Player " + args[1] + " not found");
+					p.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
 					return true;
 				}
 				ResultSet rs = sqlite.readQuery("SELECT userid FROM users, PlayerTowns WHERE username = '" + pl.getName() + "' AND users.userid = PlayerTowns.userid AND PlayerTowns.townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "'))");
@@ -250,13 +253,13 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					return true;
 				}
 				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
-			} else if(args[1].equalsIgnoreCase("remove")) {
+			} else if(args[1].equals("remove")) {
 				
-			} else {
-				return false;
-			}	
-		} else if (args.length == 3) {
-			if (args[1].equalsIgnoreCase("show")) {
+			} else if(args[1].equals("show")) { //t assistant show <town>; Console/Admin only!
+				if(!(p == null || p.hasPermission("MitaTowns.manageAssistans"))) {
+					noPermission(sender, cmd, args);
+					return true;
+				}
 				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = '" + args[2] + "'");
 				try {
 					String a = "";
@@ -268,10 +271,16 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				} catch (Exception e) {
 					sender.sendMessage("This town doesn't have any assistans");
 				}
-			} else if(args[1].equalsIgnoreCase("add")) {
+			} else {
+				return false;
+			}
+		} else {
+			if(args[1].equalsIgnoreCase("add")) {
 				
-			} else if (args[1].equalsIgnoreCase("remove")) {
+			} else if(args[1].equalsIgnoreCase("remove")) {
 				
+			} else {
+				return false;
 			}
 		}
 		return true;
@@ -280,7 +289,9 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		if (cmd.getName().equalsIgnoreCase("town")) {
 			/*
 			 * /t new <townname>
-			 * /t assistant add <name> 
+			 * /t assistant add|remove <name>
+			 * /t assistant add|remove <name> <town>
+			 * /t assistant show <town> 
 			 */
 			if(args.length == 0) {
 				Player p = null;
