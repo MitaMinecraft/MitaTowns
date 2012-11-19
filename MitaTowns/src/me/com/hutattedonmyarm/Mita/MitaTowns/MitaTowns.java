@@ -253,6 +253,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					return true;
 				}
 				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
+				p.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of your town!");
 			} else if(args[1].equals("remove")) {
 				
 			} else if(args[1].equals("show")) { //t assistant show <town>; Console/Admin only!
@@ -275,8 +276,26 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				return false;
 			}
 		} else {
-			if(args[1].equalsIgnoreCase("add")) {
-				
+			if(args[1].equalsIgnoreCase("add")) { //t assistant add <name> <town>; Console/Admin only!
+				if(!(p == null || p.hasPermission("MitaTowns.manageAssistans"))) {
+					noPermission(sender, cmd, args);
+					return true;
+				}
+				OfflinePlayer pl = getServer().getOfflinePlayer(args[2]);
+				if(pl == null) {
+					p.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
+					return true;
+				}
+				String tname = args[3];
+				ResultSet rs = sqlite.readQuery("SELECT userid FROM PlayerTowns WHERE townid = (SELECT townid FROM towns WHERE townname = '" + tname + "') AND userid = (SELECT userid FROM users WHERE username = '" + pl.getName() + "')");
+				try {
+					rs.getInt("userid");
+				} catch (Exception e) {
+					sender.sendMessage(ChatColor.RED + "Player " + pl.getName() + " is not in " + tname);
+					return true;
+				}
+				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM towns WHERE townname = '" + tname + "') WHERE username = '" + pl.getName() + "'");
+				sender.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of " + tname);
 			} else if(args[1].equalsIgnoreCase("remove")) {
 				
 			} else {
