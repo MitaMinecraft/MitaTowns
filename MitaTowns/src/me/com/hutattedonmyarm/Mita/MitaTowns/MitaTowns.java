@@ -254,8 +254,10 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				}
 				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
 				p.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of your town!");
-			} else if(args[1].equals("remove")) {
-				
+			} else if(args[1].equals("remove")) { //t assistant remove <name>; Admin/Mayor/Console only!
+				if (!(p == null || isMayorOrAdmin(p, "MitaTowns.manageAssistans")))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				sqlite.modifyQuery("UPDATE users SET assistant = '0' WHERE username = '" + args[2] + "'");
+				sender.sendMessage(ChatColor.BLUE + args[0] + " is no longer an assistant");
 			} else if(args[1].equals("show")) { //t assistant show <town>; Console/Admin only!
 				if(!(p == null || p.hasPermission("MitaTowns.manageAssistans"))) {
 					noPermission(sender, cmd, args);
@@ -296,8 +298,6 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				}
 				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM towns WHERE townname = '" + tname + "') WHERE username = '" + pl.getName() + "'");
 				sender.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of " + tname);
-			} else if(args[1].equalsIgnoreCase("remove")) {
-				
 			} else {
 				return false;
 			}
