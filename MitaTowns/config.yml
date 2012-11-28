@@ -4,3 +4,73 @@ new_town:
     x-Dir: 100
     z-Dir: 100
   cost: 10000
+
+#Plot types. Owner, Mayor, Admin hat immer alle Rechte, Build/Destroy bezieht sich auf Fremde. 
+#Town-plot: Gehört zur Town, ist aber ungekauft. 
+#Home ist ein gekaufter in der Stadt. 
+#SFS: Shop For Sale: Gehört der Stadt, wird beim Kauf ein Shop-plot. 
+
+#PVP: Berücksichtigt PVP-Einstellung der Spieler
+#Force-PVP: Überschreibt PVP-Einstellung der Spieler. Nur sinnvoll wenn PVP gesetzt ist
+#Build/Destroy/Interact überschreiben die Friend- Werte, wenn also Friend-Build auf false, Build aber auf true ist, darf ein Freun trotzdem bauen
+plots:
+  PVP:
+    Default: false
+    PVP: true
+    Force-PVP: true
+    Build: false
+    Destroy: false
+    Friend-Build: false
+    Friend-Destroy: false
+    Interact: false
+    Friend-interact: false
+  Town:
+    Default: false
+    PVP: false
+    Force-PVP: false
+    Build: false
+    Destroy: false
+    Friend-Build: false
+    Friend-Destroy: false
+    Interact: true
+    Friend-interact: true
+  Farm:
+    Default: false
+    PVP: false
+    Force-PVP: false
+    Build: false
+    Destroy: false
+    Friend-Build: true
+    Friend-Destroy: true
+    Interact: false
+    Friend-interact: true
+  Wilderness:
+    Default: true
+    PVP: false
+    Force-PVP: false
+    Build: false
+    Destroy: false
+    Friend-Build: false
+    Friend-Destroy: false
+    Interact: true
+    Friend-interact: true
+  Home:
+    Default: false
+    PVP: false
+    Force-PVP: false
+    Build: false
+    Destroy: false
+    Friend-Build: true
+    Friend-Destroy: true
+    Interact: false
+    Friend-interact: true
+  Shop:
+    Default: false
+    PVP: false
+    Force-PVP: false
+    Build: false
+    Destroy: false
+    Friend-Build: false
+    Friend-Destroy: false
+    Interact: true
+    Friend-interact: true
