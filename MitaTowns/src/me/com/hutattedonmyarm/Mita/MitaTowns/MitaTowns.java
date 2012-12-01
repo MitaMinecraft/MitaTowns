@@ -102,11 +102,27 @@ public class MitaTowns extends JavaPlugin implements Listener {
     	if(s == null) return null;
     	return s.replaceAll("&([0-9a-f])", "\u00A7$1");
     }
-	private boolean isMayorOrAdmin(Player p, String permission) {
-		ResultSet rs = sqlite.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) AND username = ''" + p.getName() + "'");
+	private boolean isMayorOrAdmin(Player p, String permission, boolean useAssistants) {
+		ResultSet rs = sqlite.readQuery("SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')");
+		int townid = -1;
+		try {
+			townid = rs.getInt("townid"); 
+		} catch (Exception e) {
+			return p.hasPermission("MitaTowns.manageAssistans");
+		}
+		rs = sqlite.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = '" + townid + "' AND username = ''" + p.getName() + "'");
 		try {
 			rs.getInt("userid");
-		}catch (Exception e) { return p.hasPermission("MitaTowns.manageAssistans");	}
+		}catch (Exception e) { 
+			rs = sqlite.readQuery("SELECT assistant FROM users WHERE username = '" + p.getName() + "'");
+			try {
+				if(!(rs.getInt("assistant") == townid) && useAssistants) {
+					return p.hasPermission("MitaTowns.manageAssistans");
+				}
+			} catch (Exception e2) {
+				p.sendMessage(ChatColor.RED + "Database error. Contact an Admin");
+			}
+		}
 		return true;
 	}
 	@EventHandler	
@@ -219,9 +235,9 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			p = (Player)sender;
 		}
 		if (args.length == 2) {
-			if(args[1].equalsIgnoreCase("show")) { //t assistant show; Admin/Mayor only!
+			if(args[1].equalsIgnoreCase("show")) { //t assistant show; Admin/Mayor/Assi only!
 				if(p == null) { playerOnly(sender); }
-				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans", true))p.sendMessage(ChatColor.RED + "You're not the mayor, an assistant or an admin");
 				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = (SELECT townname FROM towns, PlayerTowns WHERE towns.townid = PlayerTowns.townid AND Playertowns.userid = (SELECT userid FROM users WHERE username = '" + sender.getName() + "'))");
 				try {
 					String a = "";
@@ -239,7 +255,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		} else if(args.length == 3){
 			if(args[1].equalsIgnoreCase("add")) { //t assistant add <name>; Admin/Mayor only!
 				if(p == null) { playerOnly(sender); }
-				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans"))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans", false))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
 				OfflinePlayer pl = getServer().getOfflinePlayer(args[2]);
 				if(pl == null) {
 					p.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
@@ -255,7 +271,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
 				p.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of your town!");
 			} else if(args[1].equals("remove")) { //t assistant remove <name>; Admin/Mayor/Console only!
-				if (!(p == null || isMayorOrAdmin(p, "MitaTowns.manageAssistans")))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
+				if (!(p == null || isMayorOrAdmin(p, "MitaTowns.manageAssistans", false)))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
 				sqlite.modifyQuery("UPDATE users SET assistant = '0' WHERE username = '" + args[2] + "'");
 				sender.sendMessage(ChatColor.BLUE + args[0] + " is no longer an assistant");
 			} else if(args[1].equals("show")) { //t assistant show <town>; Console/Admin only!
@@ -323,7 +339,6 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					return false;
 				}
 				try {
-					//TODO check if mayor, display towncommands
 					dispTown(sender, rs.getString("townname"));
 				} catch (Exception e) {
 					
@@ -332,6 +347,8 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				if(args[0].equalsIgnoreCase("new")) {
 					return newTown(sender, cmd, label, args);
 				} else if(args[0].equalsIgnoreCase("assistant")) {
+					return manageAssistants(sender, cmd, label, args);
+				}  else if(args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
 					return manageAssistants(sender, cmd, label, args);
 				} else {
 					return true;

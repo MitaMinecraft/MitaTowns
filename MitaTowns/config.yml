@@ -12,10 +12,10 @@ new_town:
 
 #PVP: Berücksichtigt PVP-Einstellung der Spieler
 #Force-PVP: Überschreibt PVP-Einstellung der Spieler. Nur sinnvoll wenn PVP gesetzt ist
-#Build/Destroy/Interact überschreiben die Friend- Werte, wenn also Friend-Build auf false, Build aber auf true ist, darf ein Freun trotzdem bauen
+#Build/Destroy/Interact überschreiben die Friend- Werte, wenn also Friend-Build auf false, Build aber auf true ist, darf ein Freund trotzdem bauen
+#Default und Town müssen existieren!
 plots:
   PVP:
-    Default: false
     PVP: true
     Force-PVP: true
     Build: false
@@ -25,7 +25,6 @@ plots:
     Interact: false
     Friend-interact: false
   Town:
-    Default: false
     PVP: false
     Force-PVP: false
     Build: false
@@ -35,7 +34,6 @@ plots:
     Interact: true
     Friend-interact: true
   Farm:
-    Default: false
     PVP: false
     Force-PVP: false
     Build: false
@@ -44,8 +42,8 @@ plots:
     Friend-Destroy: true
     Interact: false
     Friend-interact: true
-  Wilderness:
-    Default: true
+  Default:
+    Name: Wilderness
     PVP: false
     Force-PVP: false
     Build: false
@@ -55,7 +53,6 @@ plots:
     Interact: true
     Friend-interact: true
   Home:
-    Default: false
     PVP: false
     Force-PVP: false
     Build: false
@@ -65,7 +62,6 @@ plots:
     Interact: false
     Friend-interact: true
   Shop:
-    Default: false
     PVP: false
     Force-PVP: false
     Build: false
