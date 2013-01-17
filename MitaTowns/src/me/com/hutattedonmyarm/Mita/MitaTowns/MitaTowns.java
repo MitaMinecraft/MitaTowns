@@ -143,6 +143,8 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		} else if (cmd.getName().equalsIgnoreCase("town")) {
 			if(args.length == 0 || args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
 				dispTownHelp(sender);
+			} else if () {
+				
 			}
 		}
 		return true;

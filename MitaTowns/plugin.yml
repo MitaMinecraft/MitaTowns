@@ -4,9 +4,17 @@ version: 1.0
 author: hutattedonmyarm
 commands:
   town:
-    description: Displays information about your town / General Town commands
-    usage: /town [help|?]
+    description: Town commands
+    usage: /t [help|?]
     aliases: t
+  resident:
+    description: Player commands
+    usage: /res [help|?]
+    aliases: res
+  plot:
+    description: Plot commands
+    usage: /p [help|?]
+    aliases: p
 
 permissions:
     MitaTowns.*:
