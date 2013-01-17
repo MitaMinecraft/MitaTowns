@@ -24,25 +24,21 @@ public class MitaTowns extends JavaPlugin implements Listener {
 	private ConsoleCommandSender console;
 	private Logger logger = Bukkit.getServer().getLogger();
 	private String databaseName = "MitaTownsDB.db";
-	private SQLite sqlite = new SQLite(this.logger, "[MitaTowns]", databaseName, "plugins/MitaTowns/");
+	private SQLite sql = new SQLite(this.logger, "[MitaTowns]", databaseName, "plugins/MitaTowns/");
 	public static Economy economy = null;
  
 	public void onEnable() {
-		this.console = Bukkit.getServer().getConsoleSender();
-		this.console.sendMessage("[MitaTowns] Enabling MitaTowns...");
-		Plugin worldEdit = getServer().getPluginManager().getPlugin("WorldEdit");
-		if (worldEdit == null) {
-			this.console.sendMessage(ChatColor.RED + "Error! WorldEdit not found!");
-		}
+		console = Bukkit.getServer().getConsoleSender();
+		console.sendMessage("[MitaTowns] Enabling MitaTowns...");
 		getServer().getPluginManager().registerEvents(this, this);
-		this.sqlite.open();
+		sql.open();
 		setupDatabase();
 		setupEconomy();
 		saveConfig();
 		saveDefaultConfig();
 	}
 	public void onDisable() {
-		this.sqlite.close();
+		this.sql.close();
 	}
 	private boolean setupEconomy()
     {
@@ -54,17 +50,21 @@ public class MitaTowns extends JavaPlugin implements Listener {
         return (economy != null);
     }
 	private void setupDatabase() {
-		if (!this.sqlite.tableExists("towns")) {
-			String query = "CREATE TABLE towns (townid INTEGER PRIMARY KEY, townname TEXT, founder INTEGER, mayor INTEGER, homePointX INTEGER, homePointY INTEGER, homePointZ INTEGER, edge1X INTEGER, edge1Z INTEGER, edge2X INTEGER, edge2Z INTEGER, world TEXT)";
-			this.sqlite.modifyQuery(query);
+		if (!sql.tableExists("towns")) {
+			sql.modifyQuery("CREATE TABLE towns (townid INTEGER PRIMARY KEY, townname TEXT,  mayor INTEGER, homePointX INTEGER, homePointY INTEGER, homePointZ INTEGER, corner1X INTEGER, corner1ZZ INTEGER, corner3X INTEGER, corner3Z INTEGER, world TEXT)");
 		}
-		if (!this.sqlite.tableExists("PlayerTowns")) {
-			String query = "CREATE TABLE PlayerTowns (ptid INTEGER PRIMARY KEY, userid INTEGER, townid INTEGER)";
-			this.sqlite.modifyQuery(query);
+		if (!sql.tableExists("PlayerTowns")) {
+			sql.modifyQuery("CREATE TABLE PlayerTowns (ptid INTEGER PRIMARY KEY, playerid INTEGER, townid INTEGER)");
 		}
-		if (!this.sqlite.tableExists("users")) {
-			String query = "CREATE TABLE users (userid INTEGER PRIMARY KEY, username TEXT, assistant INTEGER)";
-			this.sqlite.modifyQuery(query);
+		if (!sql.tableExists("players")) {
+			sql.modifyQuery("CREATE TABLE players (playerid INTEGER PRIMARY KEY, username TEXT, assistantOfTown INTEGER, friendBuild INTEGER, friendDestroy INTEGER, friendUse INTEGER)");
+		}
+		if (!sql.tableExists("plots")) {
+			//if it's a townplot, the ownerid = townid
+			sql.modifyQuery("CREATE TABLE plots (plotid INTEGER PRIMARY KEY, ownerid INTEGER, corner1X INTEGER, corner1Z INTEGER, corner1X INTEGER, corner1Z INTEGER, type INTEGER)");
+		}
+		if(!sql.tableExists("friendships")) {
+			sql.modifyQuery("CREATE TABLE friendships (friendshipid INTEGER PRIMARY KEY)");
 		}
 	}
 	private void playerOnly(CommandSender sender) { sender.sendMessage(ChatColor.RED + "Only players can use this command"); }
@@ -77,6 +77,9 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		this.console.sendMessage(sender.getName() + " was denied access to command /" + cmd.getLabel() + " " + argString);
 		Bukkit.getServer().broadcast(sender.getName() + " was denied access to command /" + cmd.getLabel() + " " + argString, "MitaTowns.watchPerms");
 	}
+	private void dispTownHelp(CommandSender sender) {
+		
+	}
 	private void noMoney(Player p, double needed, double has) {
 		p.sendMessage(ChatColor.RED + "You don't have enough money. You need " + (needed-has) + " more");
 	}
@@ -88,33 +91,23 @@ public class MitaTowns extends JavaPlugin implements Listener {
 						((loc.getZ() > edge1.getZ()) && (loc.getZ() < edge2.getZ())))
 			);
 	}
-	private boolean isLocIn3DArea(Location loc, Location edge1, Location edge2) {
-		return (
-				(((loc.getX() < edge1.getX()) && (loc.getX() > edge2.getX())) || 
-						((loc.getX() > edge1.getX()) && (loc.getX() < edge2.getX()))) &&
-				(((loc.getZ() < edge1.getZ()) && (loc.getZ() > edge2.getZ())) || 
-						((loc.getZ() > edge1.getZ()) && (loc.getZ() < edge2.getZ()))) &&
-				(((loc.getY() < edge1.getY()) && (loc.getY() > edge2.getY())) || 
-						((loc.getY() > edge1.getY()) && (loc.getY() < edge2.getY())))
-			);
-	}
 	private String colorize(String s){
     	if(s == null) return null;
     	return s.replaceAll("&([0-9a-f])", "\u00A7$1");
     }
 	private boolean isMayorOrAdmin(Player p, String permission, boolean useAssistants) {
-		ResultSet rs = sqlite.readQuery("SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')");
+		ResultSet rs = sql.readQuery("SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')");
 		int townid = -1;
 		try {
 			townid = rs.getInt("townid"); 
 		} catch (Exception e) {
 			return p.hasPermission("MitaTowns.manageAssistans");
 		}
-		rs = sqlite.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = '" + townid + "' AND username = ''" + p.getName() + "'");
+		rs = sql.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = '" + townid + "' AND username = ''" + p.getName() + "'");
 		try {
 			rs.getInt("userid");
 		}catch (Exception e) { 
-			rs = sqlite.readQuery("SELECT assistant FROM users WHERE username = '" + p.getName() + "'");
+			rs = sql.readQuery("SELECT assistant FROM users WHERE username = '" + p.getName() + "'");
 			try {
 				if(!(rs.getInt("assistant") == townid) && useAssistants) {
 					return p.hasPermission("MitaTowns.manageAssistans");
@@ -125,19 +118,36 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		}
 		return true;
 	}
+	
 	@EventHandler	
 	public void playerJoin(PlayerJoinEvent evt) {
 		Player p = evt.getPlayer();
-		ResultSet rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		ResultSet rs = sql.readQuery("SELECT userid FROM players WHERE playername = '" + p.getName() + "'");
 		try {
 			if(rs != null && !rs.next()) { //User doesn't exist in DB, so they joined the first time, We'll add them
-				sqlite.modifyQuery("INSERT INTO users (username, assistant) VALUES ('" + p.getName() + "', 0)");
+				sql.modifyQuery("INSERT INTO players (playername, assistantOfTown, friendBuild, friendDestroy, friendUse) VALUES ('" + p.getName() + "', 0, 0, 0, 0)");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	private boolean newTown(CommandSender sender, Command cmd, String label, String[] args) {
+	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+		Player p = null;
+		if(sender instanceof Player) {
+			p = (Player) sender;
+		}
+		if (cmd.getName().equalsIgnoreCase("plot")) {
+			
+		} else if (cmd.getName().equalsIgnoreCase("res")) {
+	
+		} else if (cmd.getName().equalsIgnoreCase("town")) {
+			if(args.length == 0 || args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
+				dispTownHelp(sender);
+			}
+		}
+		return true;
+	}
+	/*private boolean newTown(CommandSender sender, Command cmd, String label, String[] args) {
 		Player p = null;
 		if ((sender instanceof Player)) {
 			p = (Player)sender;
@@ -154,20 +164,20 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			noMoney(p, getConfig().getDouble("new_town.cost"), economy.getBalance(p.getName()));
 			return true;
 		}
-		ResultSet rs = sqlite.readQuery("SELECT townid FROM towns WHERE townname = '" + args[1] + "'");
+		ResultSet rs = sql.readQuery("SELECT townid FROM towns WHERE townname = '" + args[1] + "'");
 		try {
 			rs.getInt("townid");
 			p.sendMessage(ChatColor.RED + "A town with this name already exists");
 			return true;
 		} catch (Exception e) {	}
 		int id = -1;
-		rs = sqlite.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
+		rs = sql.readQuery("SELECT userid FROM users WHERE username = '" + p.getName() + "'");
 		try {
 			id = rs.getInt("userid");
 		} catch (Exception e) {
 			id = -1;
 		}
-		 rs = this.sqlite.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
+		 rs = this.sql.readQuery("SELECT mayor FROM towns WHERE townid = (SELECT townid FROM PlayerTowns WHERE userid = '" + id + "')");
 		try {
 			while (rs.next()) {
 				if (rs.getInt("mayor") == id) {
@@ -184,7 +194,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		Location edge2 = new Location(l.getWorld(), l.getX()-size_X/2, l.getY(), l.getZ()+size_Z/2);
 		Location edge3 = new Location(l.getWorld(), l.getX()+size_X/2, l.getY(), l.getZ()-size_Z/2);
 		Location edge4 = new Location(l.getWorld(), l.getX()+size_X/2, l.getY(), l.getZ()+size_Z/2);
-		rs = sqlite.readQuery("SELECT edge1X, edge1Z, edge2X, edge2Z FROM towns WHERE world = '" + l.getWorld().getName() + "'");
+		rs = sql.readQuery("SELECT edge1X, edge1Z, edge2X, edge2Z FROM towns WHERE world = '" + l.getWorld().getName() + "'");
 		try {
 			int te1X = rs.getInt("edge1X");
 			int te2X = rs.getInt("edge2X");
@@ -198,22 +208,23 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			}
 		} catch (Exception e) {
 		}
-		this.sqlite.modifyQuery("INSERT INTO towns (townname, founder, mayor, homePointX, homePointZ, homePointY, edge1X, edge1Z, edge2X, edge2Z, world) VALUES ('" + args[1] + "', '" + id + "', '" + id + "', '" + l.getBlockX() + "', '" + l.getBlockX() + "','" + l.getBlockX() + "', '" + (l.getBlockX() - size_X / 2) + "', '" + (l.getBlockZ() - size_Z / 2) + "', '" + (l.getBlockX() + size_X / 2) + "', '" + (l.getBlockZ() + size_Z / 2) + "', '"+l.getWorld().getName()+"')");
-		rs = this.sqlite.readQuery("SELECT townid FROM towns WHERE townname = '" + args[1] + "'");
+		this.sql.modifyQuery("INSERT INTO towns (townname, founder, mayor, homePointX, homePointZ, homePointY, edge1X, edge1Z, edge2X, edge2Z, world) VALUES ('" + args[1] + "', '" + id + "', '" + id + "', '" + l.getBlockX() + "', '" + l.getBlockX() + "','" + l.getBlockX() + "', '" + (l.getBlockX() - size_X / 2) + "', '" + (l.getBlockZ() - size_Z / 2) + "', '" + (l.getBlockX() + size_X / 2) + "', '" + (l.getBlockZ() + size_Z / 2) + "', '"+l.getWorld().getName()+"')");
+		rs = this.sql.readQuery("SELECT townid FROM towns WHERE townname = '" + args[1] + "'");
 		try {
-			this.sqlite.modifyQuery("INSERT INTO PlayerTowns (townid, userid) VALUES ('" + rs.getInt("townid") + "', '" + id + "')");
+			this.sql.modifyQuery("INSERT INTO PlayerTowns (townid, userid) VALUES ('" + rs.getInt("townid") + "', '" + id + "')");
+			sql.modifyQuery("INSERT INTO flatplots (ownerid, edge1X, edge1Z, edge2X, edge2Z, type, isTown) VALUES ('" + rs.getInt("townid") + "', " + edge1.getBlockX() + ", " + edge1.getBlockZ() + ", " + edge4.getBlockX() + ", " + edge4.getBlockZ() + ", 'Town', '1')");
 		} catch (Exception e) { e.printStackTrace(); }
 		sender.sendMessage(ChatColor.GREEN + "You're now founder and mayor of " + args[1]);
 		return true;
 	}
 	private void dispTown(CommandSender sender, String townname) {
 		String mayor, founder, inhabitans = null;
-		ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns WHERE userid = mayor AND townname = '" + townname +"'");
+		ResultSet rs = sql.readQuery("SELECT username FROM users, towns WHERE userid = mayor AND townname = '" + townname +"'");
 		try {
 			mayor = rs.getString("username");
-			rs = sqlite.readQuery("SELECT username FROM users, towns WHERE userid = founder AND townname = '" + townname +"'");
+			rs = sql.readQuery("SELECT username FROM users, towns WHERE userid = founder AND townname = '" + townname +"'");
 			founder = rs.getString("username");
-			rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND PlayerTowns.townid = towns.townid AND townname = '" + townname +"'");
+			rs = sql.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND PlayerTowns.townid = towns.townid AND townname = '" + townname +"'");
 			while (rs.next()) {
 				inhabitans += rs.getString("username") + ", ";
 			}
@@ -238,7 +249,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			if(args[1].equalsIgnoreCase("show")) { //t assistant show; Admin/Mayor/Assi only!
 				if(p == null) { playerOnly(sender); }
 				if (!isMayorOrAdmin(p, "MitaTowns.manageAssistans", true))p.sendMessage(ChatColor.RED + "You're not the mayor, an assistant or an admin");
-				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = (SELECT townname FROM towns, PlayerTowns WHERE towns.townid = PlayerTowns.townid AND Playertowns.userid = (SELECT userid FROM users WHERE username = '" + sender.getName() + "'))");
+				ResultSet rs = sql.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = (SELECT townname FROM towns, PlayerTowns WHERE towns.townid = PlayerTowns.townid AND Playertowns.userid = (SELECT userid FROM users WHERE username = '" + sender.getName() + "'))");
 				try {
 					String a = "";
 					while (rs.next()) {
@@ -261,25 +272,25 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					p.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
 					return true;
 				}
-				ResultSet rs = sqlite.readQuery("SELECT userid FROM users, PlayerTowns WHERE username = '" + pl.getName() + "' AND users.userid = PlayerTowns.userid AND PlayerTowns.townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "'))");
+				ResultSet rs = sql.readQuery("SELECT userid FROM users, PlayerTowns WHERE username = '" + pl.getName() + "' AND users.userid = PlayerTowns.userid AND PlayerTowns.townid = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "'))");
 				try {
 					rs.getInt("userid");
 				} catch (Exception e) {
 					p.sendMessage(ChatColor.RED + "Player " + pl.getName() + " is not in your town");
 					return true;
 				}
-				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
+				sql.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')) WHERE username = '" + pl.getName() + "'");
 				p.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of your town!");
 			} else if(args[1].equals("remove")) { //t assistant remove <name>; Admin/Mayor/Console only!
 				if (!(p == null || isMayorOrAdmin(p, "MitaTowns.manageAssistans", false)))p.sendMessage(ChatColor.RED + "You're not the mayor or an admin");
-				sqlite.modifyQuery("UPDATE users SET assistant = '0' WHERE username = '" + args[2] + "'");
+				sql.modifyQuery("UPDATE users SET assistant = '0' WHERE username = '" + args[2] + "'");
 				sender.sendMessage(ChatColor.BLUE + args[0] + " is no longer an assistant");
 			} else if(args[1].equals("show")) { //t assistant show <town>; Console/Admin only!
 				if(!(p == null || p.hasPermission("MitaTowns.manageAssistans"))) {
 					noPermission(sender, cmd, args);
 					return true;
 				}
-				ResultSet rs = sqlite.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = '" + args[2] + "'");
+				ResultSet rs = sql.readQuery("SELECT username FROM users, towns, PlayerTowns WHERE users.userid = PlayerTowns.userid AND towns.townid = PlayerTowns.townid AND users.assistant = towns.townid AND towns.townname = '" + args[2] + "'");
 				try {
 					String a = "";
 					while (rs.next()) {
@@ -305,14 +316,14 @@ public class MitaTowns extends JavaPlugin implements Listener {
 					return true;
 				}
 				String tname = args[3];
-				ResultSet rs = sqlite.readQuery("SELECT userid FROM PlayerTowns WHERE townid = (SELECT townid FROM towns WHERE townname = '" + tname + "') AND userid = (SELECT userid FROM users WHERE username = '" + pl.getName() + "')");
+				ResultSet rs = sql.readQuery("SELECT userid FROM PlayerTowns WHERE townid = (SELECT townid FROM towns WHERE townname = '" + tname + "') AND userid = (SELECT userid FROM users WHERE username = '" + pl.getName() + "')");
 				try {
 					rs.getInt("userid");
 				} catch (Exception e) {
 					sender.sendMessage(ChatColor.RED + "Player " + pl.getName() + " is not in " + tname);
 					return true;
 				}
-				sqlite.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM towns WHERE townname = '" + tname + "') WHERE username = '" + pl.getName() + "'");
+				sql.modifyQuery("UPDATE users SET assistant = (SELECT townid FROM towns WHERE townname = '" + tname + "') WHERE username = '" + pl.getName() + "'");
 				sender.sendMessage(ChatColor.BLUE + pl.getName() + " is now assistant of " + tname);
 			} else {
 				return false;
@@ -322,18 +333,12 @@ public class MitaTowns extends JavaPlugin implements Listener {
 	}
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		if (cmd.getName().equalsIgnoreCase("town")) {
-			/*
-			 * /t new <townname>
-			 * /t assistant add|remove <name>
-			 * /t assistant add|remove <name> <town>
-			 * /t assistant show <town> 
-			 */
 			if(args.length == 0) {
 				Player p = null;
 				ResultSet rs = null;
 				if ((sender instanceof Player)) {
 					p = (Player)sender;
-					rs = sqlite.readQuery("SELECT townname FROM towns AS t, users AS u, PlayerTowns as pt WHERE t.townid = pt.townid AND u.userid = pt.userid AND u.username = ' " + p.getName() + "'");
+					rs = sql.readQuery("SELECT townname FROM towns AS t, users AS u, PlayerTowns as pt WHERE t.townid = pt.townid AND u.userid = pt.userid AND u.username = ' " + p.getName() + "'");
 				} else {
 					playerOnly(sender);
 					return false;
@@ -356,5 +361,5 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			}
 		}
 		return true;
-	}
+	}*/
 }
