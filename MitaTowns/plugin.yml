@@ -21,12 +21,13 @@ permissions:
         description: Gives access to all commands from MitaTowns
         children:
             MitaTowns.admin.*: true
-            MitaTowns.manageAssistans: true
     MitaTowns.admin.*:
         description: MitaTowns admin commands
         children:
             MitaTowns.town.new: true
-    MitaTowns.mod.*:
-        description: MitaTowns mod commands
+            MitaTowns.manageAssistans: true
+    MitaTowns.player.*:
+        description: MitaTowns player commands
         children:
-            MitaTowns.watchPerms: true
+            MitaTowns.assistant.*
+            MitaTowns.town.help: true

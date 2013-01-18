@@ -78,7 +78,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		Bukkit.getServer().broadcast(sender.getName() + " was denied access to command /" + cmd.getLabel() + " " + argString, "MitaTowns.watchPerms");
 	}
 	private void dispTownHelp(CommandSender sender) {
-		
+		//TODO write help
 	}
 	private void noMoney(Player p, double needed, double has) {
 		p.sendMessage(ChatColor.RED + "You don't have enough money. You need " + (needed-has) + " more");
@@ -141,13 +141,79 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		} else if (cmd.getName().equalsIgnoreCase("res")) {
 	
 		} else if (cmd.getName().equalsIgnoreCase("town")) {
-			if(args.length == 0 || args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
-				dispTownHelp(sender);
-			} else if () {
+			if(args.length == 0 || args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) { //Console
+				if(p == null || p.hasPermission("MitaTowns.town.help")) {
+					noPermission(sender, cmd, args);
+				} else {
+					dispTownHelp(sender);
+				}
+			} else if (args[0].equalsIgnoreCase("assistant")) { //Console
+				manageAssistants(sender, cmd, args);
+			} else if (args[0].equalsIgnoreCase("info")) { //Console
 				
+			} else if (args[0].equalsIgnoreCase("leave")) { //No console
+				if(p == null) {
+					playerOnly(sender);
+				} else {
+					
+				}
+			} else if (args[0].equalsIgnoreCase("new")) { //No console
+				if(p == null) {
+					playerOnly(sender);
+				} else {
+					
+				}
+			} else {
+				return false;
 			}
 		}
 		return true;
+	}
+
+	public void manageAssistants(CommandSender sender, Command cmd, String[] args) {
+		Player p = null;
+		if(sender instanceof Player) {
+			p = (Player) sender;
+		}
+		if(args.length < 2) { //Display help. Console
+			if(p == null || p.hasPermission("MitaTowns.assistant.help")) {
+				dispAssistantHelp();
+			} else {
+				noPermission(sender, cmd, args);
+			}
+		} else if(args[1].equalsIgnoreCase("add")) {
+			if(p == null || p.hasPermission("MitaTowns.assistant.add")) {
+				addAssistant();
+			} else {
+				noPermission(sender, cmd, args);
+			}
+		} else if(args[1].equalsIgnoreCase("remove")) {
+			if(p == null || p.hasPermission("MitaTowns.assistant.remove")) {
+				removeAssistant();
+			} else {
+				noPermission(sender, cmd, args);
+			}
+		} else if(args[1].equalsIgnoreCase("promote")) {
+			if(p == null || p.hasPermission("MitaTowns.assistant.promote")) {
+				promoteAssistant();
+			} else {
+				noPermission(sender, cmd, args);
+			}
+		}
+	}
+	public void addAssistant() {
+		
+	}
+	
+	public void removeAssistant() {
+		
+	}
+
+	public void promoteAssistant() {
+	
+	}
+	public void dispAssistantHelp() {
+		//TODO write help
 	}
 	/*private boolean newTown(CommandSender sender, Command cmd, String label, String[] args) {
 		Player p = null;
