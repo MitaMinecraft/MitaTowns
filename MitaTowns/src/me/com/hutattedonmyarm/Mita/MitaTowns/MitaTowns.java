@@ -1,5 +1,6 @@
 package me.com.hutattedonmyarm.Mita.MitaTowns; 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.logging.Logger;
 import lib.net.darqy.SQLib.SQLite;
 import net.milkbowl.vault.economy.Economy;
@@ -15,7 +16,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -95,28 +95,9 @@ public class MitaTowns extends JavaPlugin implements Listener {
     	if(s == null) return null;
     	return s.replaceAll("&([0-9a-f])", "\u00A7$1");
     }
-	private boolean isMayorOrAdmin(Player p, String permission, boolean useAssistants) {
-		ResultSet rs = sql.readQuery("SELECT townid FROM PlayerTowns WHERE userid = (SELECT userid FROM users WHERE username = '" + p.getName() + "')");
-		int townid = -1;
-		try {
-			townid = rs.getInt("townid"); 
-		} catch (Exception e) {
-			return p.hasPermission("MitaTowns.manageAssistans");
-		}
-		rs = sql.readQuery("SELECT userid FROM towns, users WHERE userid = mayor AND townid = '" + townid + "' AND username = ''" + p.getName() + "'");
-		try {
-			rs.getInt("userid");
-		}catch (Exception e) { 
-			rs = sql.readQuery("SELECT assistant FROM users WHERE username = '" + p.getName() + "'");
-			try {
-				if(!(rs.getInt("assistant") == townid) && useAssistants) {
-					return p.hasPermission("MitaTowns.manageAssistans");
-				}
-			} catch (Exception e2) {
-				p.sendMessage(ChatColor.RED + "Database error. Contact an Admin");
-			}
-		}
-		return true;
+	private int isMayorOrAdmin(Player p, String permission, boolean useAssistants) {
+		//TODO implement! 0: No Mayor/Admin/Assistant, -1: Admin; Everything else: townid; If Admin AND Mayor,the townid is returned
+		return 0;
 	}
 	
 	@EventHandler	
@@ -177,44 +158,103 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		}
 		if(args.length < 2) { //Display help. Console
 			if(p == null || p.hasPermission("MitaTowns.assistant.help")) {
-				dispAssistantHelp();
+				dispAssistantHelp(sender);
 			} else {
 				noPermission(sender, cmd, args);
 			}
 		} else if(args[1].equalsIgnoreCase("add")) {
-			if(p == null || p.hasPermission("MitaTowns.assistant.add")) {
-				addAssistant();
+			if(p == null || (isMayorOrAdmin(p, "MitaTowns.manageAssistants", false)!= 0 && p.hasPermission("MitaTowns.assistant.add"))) {
+				addAssistant(sender, args);
 			} else {
 				noPermission(sender, cmd, args);
 			}
 		} else if(args[1].equalsIgnoreCase("remove")) {
-			if(p == null || p.hasPermission("MitaTowns.assistant.remove")) {
+			if(p == null || (isMayorOrAdmin(p, "MitaTowns.manageAssistants", false) != 0 && p.hasPermission("MitaTowns.assistant.remove"))) {
 				removeAssistant();
 			} else {
 				noPermission(sender, cmd, args);
 			}
 		} else if(args[1].equalsIgnoreCase("promote")) {
-			if(p == null || p.hasPermission("MitaTowns.assistant.promote")) {
+			if(p == null || (isMayorOrAdmin(p, "MitaTowns.manageAssistants", false) != 0 && p.hasPermission("MitaTowns.assistant.promote"))) {
 				promoteAssistant();
 			} else {
 				noPermission(sender, cmd, args);
 			}
 		}
 	}
-	public void addAssistant() {
-		
+	public void addAssistant(CommandSender sender, String[] args) {
+		Player p = null;
+		if(sender instanceof Player) {
+			p = (Player) sender;
+		}
+		if(p == null) { //Console and Admin. Syntax: /t assistant add <name> <town>
+			//TODO Add admins
+			if(args.length < 4) { 
+				dispAssistantHelp(sender);
+				return;
+			}
+			OfflinePlayer op = Bukkit.getOfflinePlayer(args[2]);
+			if(op == null) { 
+				sender.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
+				return;
+			}
+			ResultSet rs = sql.readQuery("SELECT townid FROM towns WHERE townname = '" + args[3] + "'");
+			int townid = -1;
+			try {
+				while (rs.next()) {
+					townid = rs.getInt("townid");
+					//TODO Check if town actually exists
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			promotePlayerToAssistant(op, townid);
+		} else { //Player. Syntax: /t assistant add <name>
+			if(args.length < 3) { 
+				dispAssistantHelp(sender);
+				return;
+			}
+			OfflinePlayer op = Bukkit.getOfflinePlayer(args[2]);
+			if(op == null) { 
+				sender.sendMessage(ChatColor.RED + "Player " + args[2] + " not found");
+				return;
+			}
+			int t = isMayorOrAdmin(p, "MitaTowns.manageAssistans", false);
+			if(t == -1) {
+				p.sendMessage("Please specify a town");
+				return;
+			}
+			promotePlayerToAssistant(op, t);
+		}
 	}
-	
+	public void promotePlayerToAssistant(OfflinePlayer p, int townID) {
+		sql.modifyQuery("UPDATE players SET assistantOfTown= '" + townID + "' WHERE username = '" + p.getName() + "'");
+		return;
+	}
 	public void removeAssistant() {
 		
 	}
-
 	public void promoteAssistant() {
 	
 	}
-	public void dispAssistantHelp() {
+	public void dispAssistantHelp(CommandSender sender) {
 		//TODO write help
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	/*private boolean newTown(CommandSender sender, Command cmd, String label, String[] args) {
 		Player p = null;
 		if ((sender instanceof Player)) {
