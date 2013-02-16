@@ -202,10 +202,12 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			try {
 				while (rs.next()) {
 					townid = rs.getInt("townid");
-					//TODO Check if town actually exists
 				}
 			} catch (SQLException e) {
 				e.printStackTrace();
+			}
+			if(townid == -1) {
+				sender.sendMessage(ChatColor.RED + "Town " + args[3] + " not found");
 			}
 			promotePlayerToAssistant(op, townid);
 		} else { //Player or Admin as Mayor. Syntax: /t assistant add <name>
@@ -222,6 +224,8 @@ public class MitaTowns extends JavaPlugin implements Listener {
 			if(t == -1) {
 				p.sendMessage("Please specify a town");
 				return;
+			} else if (t == 0) {
+				p.sendMessage(ChatColor.RED + "You're not a major");
 			}
 			promotePlayerToAssistant(op, t);
 		}
