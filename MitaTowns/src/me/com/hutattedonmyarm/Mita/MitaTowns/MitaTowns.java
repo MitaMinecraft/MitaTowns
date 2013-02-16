@@ -187,8 +187,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 		if(sender instanceof Player) {
 			p = (Player) sender;
 		}
-		if(p == null) { //Console and Admin. Syntax: /t assistant add <name> <town>
-			//TODO Add admins
+		if(p == null || (p.hasPermission("MitaTowns.manageAssistans") && args.length >= 4)) { //Console and Admin. Syntax: /t assistant add <name> <town>
 			if(args.length < 4) { 
 				dispAssistantHelp(sender);
 				return;
@@ -209,7 +208,7 @@ public class MitaTowns extends JavaPlugin implements Listener {
 				e.printStackTrace();
 			}
 			promotePlayerToAssistant(op, townid);
-		} else { //Player. Syntax: /t assistant add <name>
+		} else { //Player or Admin as Mayor. Syntax: /t assistant add <name>
 			if(args.length < 3) { 
 				dispAssistantHelp(sender);
 				return;
